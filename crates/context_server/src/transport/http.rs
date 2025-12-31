@@ -12,7 +12,7 @@ use smol::channel;
 use std::{pin::Pin, sync::Arc};
 
 use crate::transport::{
-    Transport,
+    Transport, UnauthorizedError,
     http::{auth::OAuthClient, www_authenticate::WwwAuthenticate},
 };
 
@@ -137,16 +137,14 @@ impl HttpTransport {
                 log::debug!("Notification accepted");
             }
             status if status.as_u16() == 401 => {
-                // todo! stateful
-                let www_authenticate_header = response.headers().get("WWW-Authenticate");
+                let www_authenticate_header = response
+                    .headers()
+                    .get("WWW-Authenticate")
+                    .and_then(|value| Some(value.to_str().ok()?.to_string()));
 
-                let www_authenticate = www_authenticate_header
-                    .and_then(|value| WwwAuthenticate::parse(value.to_str().ok()?));
-                let client =
-                    OAuthClient::init(&self.endpoint, www_authenticate.as_ref(), &self.http_client)
-                        .await?;
-                let (url, code_verifier) = client.authorize_url()?;
-                dbg!(url);
+                anyhow::bail!(UnauthorizedError {
+                    www_authenticate_header
+                })
             }
             _ => {
                 let mut error_body = String::new();

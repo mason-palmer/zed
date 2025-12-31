@@ -6,6 +6,8 @@ pub mod test;
 pub mod transport;
 pub mod types;
 
+pub use transport::UnauthorizedError;
+
 use collections::HashMap;
 use http_client::HttpClient;
 use std::path::Path;
